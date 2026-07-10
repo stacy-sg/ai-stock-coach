@@ -1,0 +1,30 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: stockcoach
+      POSTGRES_PASSWORD: stockcoach
+      POSTGRES_DB: stockcoach
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      # overrides backend/.env's localhost URL with the in-network hostname
+      DATABASE_URL: postgresql://stockcoach:stockcoach@db:5432/stockcoach
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:

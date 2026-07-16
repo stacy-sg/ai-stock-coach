@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import analysis, backtest, holdings, news, stocks
+from app.routers import analysis, backtest, holdings, news, stocks, watchlist
 
 app = FastAPI(title="AI Stock Coach", version="0.1.0")
 
@@ -18,6 +18,7 @@ app.include_router(analysis.router)
 app.include_router(news.router)
 app.include_router(holdings.router)
 app.include_router(backtest.router)
+app.include_router(watchlist.router)
 
 
 @app.get("/health")

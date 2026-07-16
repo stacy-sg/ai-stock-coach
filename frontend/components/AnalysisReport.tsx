@@ -1,67 +1,35 @@
-import { Sparkles } from "lucide-react";
-import type { ReactNode } from "react";
+import Markdown, { type Components } from "react-markdown";
 
-type Block = { type: "list"; items: string[] } | { type: "paragraph"; text: string };
-
-function toBlocks(report: string): Block[] {
-  const blocks: Block[] = [];
-  for (const rawLine of report.split("\n")) {
-    const line = rawLine.trim();
-    if (!line) continue;
-
-    const isBullet = line.startsWith("* ") || line.startsWith("- ");
-    const text = isBullet ? line.slice(2).trim() : line;
-
-    const last = blocks[blocks.length - 1];
-    if (isBullet && last?.type === "list") {
-      last.items.push(text);
-    } else if (isBullet) {
-      blocks.push({ type: "list", items: [text] });
-    } else {
-      blocks.push({ type: "paragraph", text });
-    }
-  }
-  return blocks;
-}
-
-// Renders **bold** spans from the LLM's markdown-ish output without pulling
-// in a full markdown dependency for one formatting case.
-function renderInline(text: string): ReactNode[] {
-  return text.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
-    part.startsWith("**") && part.endsWith("**") ? (
-      <strong key={i} className="font-semibold text-foreground">
-        {part.slice(2, -2)}
-      </strong>
-    ) : (
-      <span key={i}>{part}</span>
-    )
-  );
-}
+const MARKDOWN_COMPONENTS: Components = {
+  h1: ({ children }) => <p className="text-lg font-bold">{children}</p>,
+  h2: ({ children }) => <p className="text-base font-bold">{children}</p>,
+  h3: ({ children }) => <p className="text-[15px] font-bold">{children}</p>,
+  p: ({ children }) => <p>{children}</p>,
+  strong: ({ children }) => <strong className="text-foreground font-semibold">{children}</strong>,
+  ul: ({ children }) => <ul className="flex flex-col gap-2">{children}</ul>,
+  ol: ({ children }) => <ol className="flex flex-col gap-2">{children}</ol>,
+  li: ({ children }) => (
+    <li className="flex gap-2.5">
+      <span className="bg-brand mt-2.5 size-1.5 shrink-0 rounded-full" />
+      <span>{children}</span>
+    </li>
+  ),
+  // The report never links out, and LLM output shouldn't drive navigation
+  // anyway — render link text as plain text instead of a clickable <a>.
+  a: ({ children }) => <span>{children}</span>,
+};
 
 export default function AnalysisReport({ report }: { report: string | null }) {
   return (
-    <section className="card flex flex-col gap-4">
-      <div className="flex items-center gap-2">
-        <Sparkles className="text-brand size-4" />
-        <h2 className="text-sm font-semibold">AI 리포트</h2>
+    <section className="card flex flex-col gap-3.5">
+      <div className="flex items-center gap-2.5">
+        <span className="avatar-brand">AI</span>
+        <span className="text-[15px] font-bold">AI 코치의 의견</span>
       </div>
 
       {report ? (
-        <div className="flex flex-col gap-3 text-sm leading-relaxed">
-          {toBlocks(report).map((block, i) =>
-            block.type === "list" ? (
-              <ul key={i} className="flex flex-col gap-2">
-                {block.items.map((item, j) => (
-                  <li key={j} className="flex gap-2.5">
-                    <span className="bg-brand mt-2 size-1.5 shrink-0 rounded-full" />
-                    <span>{renderInline(item)}</span>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p key={i}>{renderInline(block.text)}</p>
-            )
-          )}
+        <div className="flex flex-col gap-3 text-[17px] leading-[1.7] font-normal">
+          <Markdown components={MARKDOWN_COMPONENTS}>{report}</Markdown>
         </div>
       ) : (
         <p className="text-muted text-sm">

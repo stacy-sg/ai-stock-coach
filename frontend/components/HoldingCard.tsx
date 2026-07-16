@@ -5,14 +5,8 @@ import Link from "next/link";
 import { useState } from "react";
 import GuideBadge from "@/components/GuideBadge";
 import SignalBadge from "@/components/SignalBadge";
-import { formatSignedPct, returnClass } from "@/lib/format";
+import { formatPrice, formatSignedPct, returnClass } from "@/lib/format";
 import type { HoldingOut } from "@/lib/types";
-
-function formatPrice(value: number, currency: string): string {
-  return value.toLocaleString("en-US", {
-    maximumFractionDigits: currency === "KRW" ? 0 : 2,
-  });
-}
 
 export default function HoldingCard({
   holding,

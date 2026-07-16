@@ -5,8 +5,27 @@
   --foreground: #18181b;
   --surface: #ffffff;
   --border-subtle: #e4e4e7;
-  --brand: #6366f1;
+  --brand: oklch(0.55 0.18 250);
   --brand-foreground: #ffffff;
+
+  /* Signal colors — exact OKLCH values from the 종목 분석 wireframe, shared
+     by the signal banner, score gauge, and every BUY/HOLD/WATCH/SELL badge
+     so they never drift apart into slightly-different greens/blues. */
+  --signal-buy-bg: oklch(0.94 0.055 150);
+  --signal-buy-text: oklch(0.35 0.11 150);
+  --signal-buy-ring: oklch(0.62 0.13 150);
+
+  --signal-hold-bg: oklch(0.94 0.02 250);
+  --signal-hold-text: oklch(0.4 0.1 250);
+  --signal-hold-ring: oklch(0.58 0.15 250);
+
+  --signal-watch-bg: oklch(0.95 0.05 70);
+  --signal-watch-text: oklch(0.42 0.1 70);
+  --signal-watch-ring: oklch(0.74 0.14 70);
+
+  --signal-sell-bg: oklch(0.95 0.045 25);
+  --signal-sell-text: oklch(0.42 0.14 25);
+  --signal-sell-ring: oklch(0.62 0.17 25);
 }
 
 @theme inline {
@@ -26,8 +45,24 @@
     --foreground: #f4f4f5;
     --surface: #141416;
     --border-subtle: #27272a;
-    --brand: #818cf8;
-    --brand-foreground: #09090b;
+    --brand: oklch(0.72 0.16 250);
+    --brand-foreground: #08090d;
+
+    --signal-buy-bg: oklch(0.28 0.06 150);
+    --signal-buy-text: oklch(0.82 0.1 150);
+    --signal-buy-ring: oklch(0.65 0.14 150);
+
+    --signal-hold-bg: oklch(0.28 0.03 250);
+    --signal-hold-text: oklch(0.8 0.09 250);
+    --signal-hold-ring: oklch(0.62 0.16 250);
+
+    --signal-watch-bg: oklch(0.3 0.045 70);
+    --signal-watch-text: oklch(0.82 0.09 70);
+    --signal-watch-ring: oklch(0.72 0.14 70);
+
+    --signal-sell-bg: oklch(0.28 0.05 25);
+    --signal-sell-text: oklch(0.8 0.11 25);
+    --signal-sell-ring: oklch(0.66 0.17 25);
   }
 }
 
@@ -148,29 +183,79 @@ body {
     @apply text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500;
   }
 
-  /* Signal badges */
+  /* Header chips (ticker code, KR/US market tag) */
+  .chip-ticker {
+    @apply rounded-md bg-zinc-100 px-2.5 py-1 text-sm font-medium text-zinc-500
+      dark:bg-zinc-800 dark:text-zinc-400;
+  }
+
+  .chip-market {
+    @apply bg-brand/10 text-brand rounded-md px-2 py-1 text-xs font-bold tracking-wide;
+  }
+
+  /* Signal badges — colors come from the --signal-* tokens above, not
+     hardcoded Tailwind palette colors, so the small pill badge and the big
+     signal banner can never fall out of sync. */
   .badge-buy {
-    @apply inline-flex items-center gap-1.5 rounded-full bg-emerald-100
-      px-3.5 py-1.5 text-sm font-bold text-emerald-700
-      dark:bg-emerald-500/15 dark:text-emerald-400;
+    @apply inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-bold;
+    background: var(--signal-buy-bg);
+    color: var(--signal-buy-text);
   }
 
   .badge-hold {
-    @apply inline-flex items-center gap-1.5 rounded-full bg-blue-100
-      px-3.5 py-1.5 text-sm font-bold text-blue-700
-      dark:bg-blue-500/15 dark:text-blue-400;
+    @apply inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-bold;
+    background: var(--signal-hold-bg);
+    color: var(--signal-hold-text);
   }
 
   .badge-watch {
-    @apply inline-flex items-center gap-1.5 rounded-full bg-amber-100
-      px-3.5 py-1.5 text-sm font-bold text-amber-700
-      dark:bg-amber-500/15 dark:text-amber-400;
+    @apply inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-bold;
+    background: var(--signal-watch-bg);
+    color: var(--signal-watch-text);
   }
 
   .badge-sell {
-    @apply inline-flex items-center gap-1.5 rounded-full bg-red-100
-      px-3.5 py-1.5 text-sm font-bold text-red-700
-      dark:bg-red-500/15 dark:text-red-400;
+    @apply inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-sm font-bold;
+    background: var(--signal-sell-bg);
+    color: var(--signal-sell-text);
+  }
+
+  /* Big signal banner (종목 분석 hero) — same tokens, larger surface */
+  .signal-banner {
+    @apply flex flex-col items-center gap-2 rounded-[20px] px-6 py-7 text-center;
+  }
+
+  .signal-banner-buy {
+    background: var(--signal-buy-bg);
+    color: var(--signal-buy-text);
+  }
+
+  .signal-banner-hold {
+    background: var(--signal-hold-bg);
+    color: var(--signal-hold-text);
+  }
+
+  .signal-banner-watch {
+    background: var(--signal-watch-bg);
+    color: var(--signal-watch-text);
+  }
+
+  .signal-banner-sell {
+    background: var(--signal-sell-bg);
+    color: var(--signal-sell-text);
+  }
+
+  /* Solid-brand avatar circle (AI 코치의 의견 card header) */
+  .avatar-brand {
+    @apply bg-brand inline-flex size-8 shrink-0 items-center justify-center
+      rounded-full text-sm font-bold text-white;
+  }
+
+  /* Neutral initial avatar (watchlist rows) */
+  .avatar-neutral {
+    @apply inline-flex size-[38px] shrink-0 items-center justify-center rounded-full
+      bg-zinc-100 text-[13px] font-bold text-zinc-600
+      dark:bg-zinc-800 dark:text-zinc-300;
   }
 
   /* News sentiment chips */

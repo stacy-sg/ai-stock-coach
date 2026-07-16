@@ -100,3 +100,43 @@ def sync_price_history(db: Session, stock: Stock, as_of_date: date | None = None
     db.execute(stmt)
     db.commit()
     return len(rows)
+
+
+def record_view(db: Session, stock: Stock) -> None:
+    """Bump the "popular stocks" counter. Called once per stock-detail page
+    load (GET /api/stocks/{ticker}) — not from get_or_create_stock, since
+    that's also called internally by holdings/watchlist/analysis and would
+    over-count a single page visit several times over.
+    """
+    stock.view_count += 1
+    db.commit()
+
+
+def get_popular_stocks(db: Session, market: str, limit: int) -> list[Stock]:
+    return (
+        db.query(Stock)
+        .filter(Stock.market == market, Stock.view_count > 0)
+        .order_by(Stock.view_count.desc())
+        .limit(limit)
+        .all()
+    )
+
+
+def get_latest_prices(db: Session, stock: Stock) -> tuple[float | None, float | None]:
+    """Latest close and the trading day before it, for a quote/change display.
+
+    Independent of the analysis cache — a UI showing "current price" wants
+    the freshest quote regardless of when the AI analysis snapshot was last
+    computed.
+    """
+    rows = (
+        db.query(PriceHistory.close)
+        .filter(PriceHistory.stock_id == stock.id)
+        .order_by(PriceHistory.date.desc())
+        .limit(2)
+        .all()
+    )
+    closes = [float(r[0]) for r in rows]
+    close = closes[0] if len(closes) >= 1 else None
+    prev_close = closes[1] if len(closes) >= 2 else None
+    return close, prev_close

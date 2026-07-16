@@ -26,6 +26,16 @@ def _run_analysis(ticker: str, market: str, db: Session, force: bool) -> Analysi
         raise HTTPException(status_code=404, detail="Stock not found")
 
     try:
-        return analysis_service.analyze(db, stock, force=force)
+        snapshot = analysis_service.analyze(db, stock, force=force)
     except InsufficientHistoryError as e:
         raise HTTPException(status_code=422, detail=str(e))
+
+    result = AnalysisOut.model_validate(snapshot)
+    close, prev_close = stock_service.get_latest_prices(db, stock)
+    result.close = close
+    result.change_pct = (
+        (close - prev_close) / prev_close * 100
+        if close is not None and prev_close
+        else None
+    )
+    return result

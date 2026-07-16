@@ -16,6 +16,8 @@ class AnalysisOut(BaseModel):
     signal: str
     llm_report: Optional[str] = None
     expires_at: Optional[datetime] = None
+    close: Optional[float] = None
+    change_pct: Optional[float] = None
 
     class Config:
         from_attributes = True

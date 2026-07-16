@@ -604,11 +604,15 @@ GET  /api/stocks/{ticker}/analysis?market={KR|US}
 POST /api/stocks/{ticker}/analysis?market={KR|US}   # 강제 재분석
 ```
 
+> 응답에 `close`/`change_pct`(전일 대비 등락률) 포함. 종목 분석 화면에 현재가를 보여주기 위해 추가— `analysis_snapshots` 캐시와 무관하게 매 요청마다 `price_history` 최신 2행에서 라이브로 계산한다 (분석 리포트는 캐시돼도 가격 표시는 최신이어야 하므로).
+
 ### 뉴스
 
 ```http
 GET /api/stocks/{ticker}/news?market={KR|US}&limit=10
 ```
+
+> 응답에 `source`(발행처명) 포함. 네이버 뉴스는 도메인 매핑 테이블로 추정(모르는 도메인은 원본 도메인 그대로 노출), Finnhub는 API 자체 제공 필드 사용.
 
 ### 관심 종목
 

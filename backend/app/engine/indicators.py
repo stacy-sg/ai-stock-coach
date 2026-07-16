@@ -39,9 +39,12 @@ def compute_indicators(df: pd.DataFrame, as_of_date: date) -> dict:
         value = series.iloc[-1]
         return None if pd.isna(value) else float(value)
 
+    prev_close = None if len(close) < 2 else float(close.iloc[-2])
+
     return {
         "as_of_date": history.index[-1].date(),
         "close": last(close),
+        "prev_close": prev_close,
         "ma5": last(ma5),
         "ma20": last(ma20),
         "ma60": last(ma60),

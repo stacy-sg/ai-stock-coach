@@ -4,8 +4,10 @@ import type {
   HoldingOut,
   Market,
   NewsOut,
+  PopularStockOut,
   StockDetail,
   StockSearchResult,
+  WatchlistOut,
 } from "./types";
 
 const API_BASE_URL =
@@ -106,6 +108,27 @@ export function updateHolding(
 
 export async function deleteHolding(id: number): Promise<void> {
   await apiFetch(`/api/holdings/${id}`, { method: "DELETE" });
+}
+
+export function getPopularStocks(market: Market, limit = 4): Promise<PopularStockOut[]> {
+  const params = new URLSearchParams({ market, limit: String(limit) });
+  return apiFetch(`/api/stocks/popular?${params}`);
+}
+
+export function listWatchlist(): Promise<WatchlistOut[]> {
+  return apiFetch("/api/watchlist");
+}
+
+export function addWatchlist(ticker: string, market: Market): Promise<WatchlistOut> {
+  return apiFetch("/api/watchlist", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ticker, market }),
+  });
+}
+
+export async function removeWatchlist(id: number): Promise<void> {
+  await apiFetch(`/api/watchlist/${id}`, { method: "DELETE" });
 }
 
 export function runBacktest(

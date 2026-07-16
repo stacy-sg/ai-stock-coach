@@ -47,6 +47,7 @@ def sync_news(db: Session, stock: Stock, limit: int = DEFAULT_LIMIT) -> int:
                 stock_id=stock.id,
                 title=article["title"],
                 url=article["url"],
+                source=article.get("source"),
                 published_at=article["published_at"],
                 sentiment=info.get("sentiment"),
                 sentiment_score=info.get("sentiment_score"),

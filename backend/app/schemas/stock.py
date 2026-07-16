@@ -23,6 +23,13 @@ class StockDetail(BaseModel):
         from_attributes = True
 
 
+class PopularStockOut(BaseModel):
+    ticker: str
+    market: Market
+    name: str
+    change_pct: Optional[float] = None
+
+
 class PriceHistoryOut(BaseModel):
     date: date
     open: Optional[float] = None

@@ -13,6 +13,7 @@ class News(Base):
     stock_id = Column(Integer, ForeignKey("stocks.id"), nullable=False)
     title = Column(String, nullable=False)
     url = Column(String)
+    source = Column(String)  # publisher display name, e.g. "한국경제", "Yahoo"
     published_at = Column(DateTime)
     sentiment = Column(String(10))  # POSITIVE / NEGATIVE / NEUTRAL
     sentiment_score = Column(Numeric)  # -1.0 ~ 1.0

@@ -1,14 +1,26 @@
 "use client";
 
-import { ArrowLeft, LineChart, RefreshCw } from "lucide-react";
+import { ArrowLeft, LineChart, RefreshCw, Star } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import AnalysisReport from "@/components/AnalysisReport";
+import DetailScores from "@/components/DetailScores";
 import NewsList from "@/components/NewsList";
-import ScorePanel from "@/components/ScorePanel";
+import OverallScoreCard from "@/components/OverallScoreCard";
+import PriceHeader from "@/components/PriceHeader";
+import SignalBanner from "@/components/SignalBanner";
 import StatusMessage from "@/components/StatusMessage";
 import StockPageSkeleton from "@/components/StockPageSkeleton";
-import { ApiError, getAnalysis, getNews, getStock } from "@/lib/api";
+import {
+  addWatchlist,
+  ApiError,
+  getAnalysis,
+  getNews,
+  getStock,
+  listWatchlist,
+  removeWatchlist,
+} from "@/lib/api";
+import { recordRecentView } from "@/lib/recentViews";
 import type { AnalysisOut, Market, NewsOut, StockDetail } from "@/lib/types";
 
 function toApiError(err: unknown, fallback: string): ApiError {
@@ -29,6 +41,25 @@ export default function StockPageClient({
   const [fatalError, setFatalError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [reanalyzing, setReanalyzing] = useState(false);
+  const [watchlistId, setWatchlistId] = useState<number | null>(null);
+  const [watchlistBusy, setWatchlistBusy] = useState(false);
+
+  async function toggleWatchlist() {
+    setWatchlistBusy(true);
+    try {
+      if (watchlistId !== null) {
+        await removeWatchlist(watchlistId);
+        setWatchlistId(null);
+      } else {
+        const item = await addWatchlist(ticker, market);
+        setWatchlistId(item.id);
+      }
+    } catch {
+      // best-effort UI toggle — a failed add/remove just leaves the star as-is
+    } finally {
+      setWatchlistBusy(false);
+    }
+  }
 
   async function reanalyze() {
     setReanalyzing(true);
@@ -61,6 +92,7 @@ export default function StockPageClient({
         if (cancelled) return;
         setStock(stockData);
         setNews(newsData);
+        recordRecentView({ ticker: stockData.ticker, market: stockData.market, name: stockData.name });
       } catch (err) {
         if (!cancelled) {
           setFatalError(toApiError(err, "불러오기에 실패했습니다.").detail);
@@ -85,6 +117,22 @@ export default function StockPageClient({
     };
   }, [market, ticker]);
 
+  useEffect(() => {
+    let cancelled = false;
+    listWatchlist()
+      .then((items) => {
+        if (cancelled) return;
+        const match = items.find((i) => i.ticker === ticker && i.market === market);
+        setWatchlistId(match?.id ?? null);
+      })
+      .catch(() => {
+        // best-effort — the star just stays in its default (not-added) state
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [market, ticker]);
+
   if (loading) {
     return <StockPageSkeleton />;
   }
@@ -99,39 +147,52 @@ export default function StockPageClient({
 
   return (
     <div className="page-container">
-      <Link href="/" className="link-back">
-        <ArrowLeft className="size-3.5" />
-        검색으로
-      </Link>
-
       <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">{stock.name}</h1>
-          <p className="text-muted font-mono text-sm">
-            {stock.ticker} · {stock.market}
-            {stock.sector ? ` · ${stock.sector}` : ""}
-          </p>
-        </div>
+        <Link href="/" className="link-back">
+          <ArrowLeft className="size-3.5" />
+          검색으로
+        </Link>
         <div className="flex shrink-0 items-center gap-2">
-          <Link href={`/stocks/${market}/${ticker}/backtest`} className="btn-icon" aria-label="백테스트">
-            <LineChart className="size-4" />
-          </Link>
           <button
             type="button"
-            onClick={reanalyze}
-            disabled={reanalyzing}
-            className="btn-primary"
+            onClick={toggleWatchlist}
+            disabled={watchlistBusy}
+            className="btn-icon"
+            aria-label={watchlistId !== null ? "관심 종목에서 제거" : "관심 종목에 추가"}
           >
+            <Star
+              className={`size-4 ${watchlistId !== null ? "fill-brand text-brand" : ""}`}
+            />
+          </button>
+          <Link
+            href={`/stocks/${market}/${ticker}/backtest`}
+            className="btn-icon"
+            aria-label="백테스트"
+          >
+            <LineChart className="size-4" />
+          </Link>
+          <button type="button" onClick={reanalyze} disabled={reanalyzing} className="btn-primary">
             <RefreshCw className={`size-4 ${reanalyzing ? "animate-spin" : ""}`} />
             다시 분석
           </button>
         </div>
       </div>
 
+      <PriceHeader
+        name={stock.name}
+        ticker={stock.ticker}
+        market={stock.market}
+        sector={stock.sector}
+        close={analysis?.close ?? null}
+        changePct={analysis?.change_pct ?? null}
+      />
+
       {analysis ? (
         <>
-          <ScorePanel analysis={analysis} />
+          <SignalBanner signal={analysis.signal} />
           <AnalysisReport report={analysis.llm_report} />
+          <OverallScoreCard analysis={analysis} />
+          <DetailScores analysis={analysis} />
         </>
       ) : analysisError ? (
         <StatusMessage
@@ -150,7 +211,7 @@ export default function StockPageClient({
       ) : null}
 
       <section className="flex flex-col gap-3">
-        <h2 className="eyebrow">관련 뉴스</h2>
+        <h2 className="eyebrow">최근 뉴스</h2>
         <NewsList items={news} />
       </section>
     </div>

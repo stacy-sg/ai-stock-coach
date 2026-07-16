@@ -28,11 +28,14 @@ export interface AnalysisOut {
   signal: Signal;
   llm_report: string | null;
   expires_at: string | null;
+  close: number | null;
+  change_pct: number | null;
 }
 
 export interface NewsOut {
   title: string;
   url: string | null;
+  source: string | null;
   published_at: string | null;
   sentiment: string | null;
   sentiment_score: number | null;
@@ -71,6 +74,24 @@ export interface TradeOut {
 export interface EquityPointOut {
   date: string;
   equity: number;
+}
+
+export interface PopularStockOut {
+  ticker: string;
+  market: Market;
+  name: string;
+  change_pct: number | null;
+}
+
+export interface WatchlistOut {
+  id: number;
+  ticker: string;
+  market: Market;
+  name: string;
+  created_at: string;
+  close: number | null;
+  change_pct: number | null;
+  signal: Signal | null;
 }
 
 export interface BacktestOut {

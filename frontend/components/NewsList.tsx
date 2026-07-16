@@ -1,4 +1,4 @@
-import { Minus, Newspaper, TrendingDown, TrendingUp } from "lucide-react";
+import { Newspaper } from "lucide-react";
 import type { NewsOut } from "@/lib/types";
 
 const SENTIMENT_CHIP: Record<string, string> = {
@@ -7,10 +7,10 @@ const SENTIMENT_CHIP: Record<string, string> = {
   NEUTRAL: "chip-neutral",
 };
 
-const SENTIMENT_ICON: Record<string, typeof TrendingUp> = {
-  POSITIVE: TrendingUp,
-  NEGATIVE: TrendingDown,
-  NEUTRAL: Minus,
+const SENTIMENT_LABEL: Record<string, string> = {
+  POSITIVE: "긍정",
+  NEGATIVE: "부정",
+  NEUTRAL: "중립",
 };
 
 function formatDate(value: string | null): string {
@@ -32,37 +32,32 @@ export default function NewsList({ items }: { items: NewsOut[] }) {
   }
 
   return (
-    <ul className="flex flex-col gap-3">
-      {items.map((item) => {
-        const SentimentIcon = item.sentiment ? SENTIMENT_ICON[item.sentiment] : null;
-        return (
-          <li key={item.url ?? item.title} className="card gap-2 py-4">
-            <div className="flex flex-col gap-2">
-              <div className="flex items-start justify-between gap-3">
-                <a
-                  href={item.url ?? undefined}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-brand text-sm font-semibold transition-colors"
-                >
-                  {item.title}
-                </a>
-                <span className="text-muted shrink-0 text-xs">
-                  {formatDate(item.published_at)}
-                </span>
-              </div>
-              {item.summary && <p className="text-muted text-sm">{item.summary}</p>}
-              {item.sentiment && SentimentIcon && (
-                <span className={SENTIMENT_CHIP[item.sentiment] ?? "chip-neutral"}>
-                  <SentimentIcon className="size-3" />
-                  {item.sentiment}
-                  {item.sentiment_score !== null ? ` ${item.sentiment_score.toFixed(1)}` : ""}
-                </span>
-              )}
-            </div>
-          </li>
-        );
-      })}
-    </ul>
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-3">
+      {items.map((item) => (
+        <a
+          key={item.url ?? item.title}
+          href={item.url ?? undefined}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="card flex flex-col gap-2 rounded-2xl p-[18px] transition-shadow hover:shadow-md"
+        >
+          <div className="flex items-center justify-between gap-2">
+            {item.sentiment && (
+              <span className={SENTIMENT_CHIP[item.sentiment] ?? "chip-neutral"}>
+                {SENTIMENT_LABEL[item.sentiment] ?? item.sentiment}
+              </span>
+            )}
+            <span className="text-muted text-xs">{formatDate(item.published_at)}</span>
+          </div>
+          <span className="text-[15px] leading-[1.4] font-bold">{item.title}</span>
+          {item.summary && (
+            <p className="text-[13.5px] leading-[1.55] text-zinc-500 dark:text-zinc-400">
+              {item.summary}
+            </p>
+          )}
+          {item.source && <span className="text-muted mt-0.5 text-xs">{item.source}</span>}
+        </a>
+      ))}
+    </div>
   );
 }

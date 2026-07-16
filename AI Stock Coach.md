@@ -388,6 +388,44 @@ news_score = (avg_sentiment_score + 1) / 2 * 100
 
 ---
 
+### 6.4 보유 종목 가이드 규칙 (Phase 5)
+
+보유 종목은 `analysis_snapshots`의 LLM 리포트를 재사용하지 않는다. `GET /api/holdings` 조회마다 Gemini를 호출하면 비용이 통제 불가능하므로, Score Engine(순수 계산)만으로 가이드를 산출한다. 자연어 설명이 필요하면 해당 종목의 `/api/stocks/{ticker}/analysis`로 유도한다.
+
+수익률 = (현재가 - avg_price) / avg_price * 100 (환율 미반영, 통화별 개별 표시 — 9장 참고)
+
+우선순위 순으로 판정(먼저 만족하는 조건 채택):
+
+| 조건 | 가이드 |
+| --- | --- |
+| signal == SELL 이거나 risk_score < 20 | **리스크 경고** |
+| 수익률 >= 10% 이고 signal in (WATCH, HOLD) | **분할 익절** |
+| signal == BUY | **보유** |
+| 그 외 | **관망** |
+
+> 임계값(수익률 10%, risk_score 20)은 설계서에 명시되지 않아 구현 시 임의로 정한 값이다. 3.4절 예시("+11.4%, 상승 추세 유지, 분할 익절 고려")와 부합하도록 잡았으며, 실사용하며 조정 가능하다.
+
+---
+
+### 6.5 백테스트 (Phase 6)
+
+12.2절에서 Score Engine을 `calculate_scores(ticker, market, as_of_date)` 순수 함수로 설계해둔 덕에, 백테스트는 이 함수와 동일한 채점 로직(`_trend_score`, `_momentum_score`, `_risk_score`, `_volume_score`, `WEIGHTS`, `_signal`)을 재사용한다. 다만 그 함수를 날짜마다 그대로 호출하면 매번 전체 이력을 다시 잘라 지표를 재계산해 백테스트 구간 전체에서 O(n²)이 되므로, 백테스트 전용 엔진(`app/engine/backtest.py`)은 지표를 전체 구간에 대해 한 번에 벡터화 계산한 뒤 하루씩 순회한다. 스코어링 공식 자체는 라이브 경로와 100% 동일 — 백테스트가 실제 라이브 신호와 어긋나지 않도록 검증됨(수동 대조 테스트로 확인).
+
+**전략 (설계서에 정의 없어 임의로 정함)**: 롱 온리, 신호 추종.
+
+* 무포지션 + signal == BUY → 그날 종가에 전량 매수
+* 보유 중 + signal == SELL → 그날 종가에 전량 매도, 거래 1건으로 기록
+* HOLD / WATCH는 포지션 변경 없음 (보유 중이면 계속 보유, 무포지션이면 계속 관망)
+* 백테스트 종료일까지 포지션이 남아있으면 마지막 날 종가로 강제 청산해 수익률에 반영
+
+**한계**:
+
+* price_history가 온디맨드 캐시라(9장 결정 사항), 백테스트 시작일이 이미 캐싱된 범위보다 오래전이면 데이터 부족으로 422가 날 수 있다. 전체 시장 사전 수집을 하지 않기로 한 결정과 트레이드오프.
+* 슬리피지·수수료·세금 미반영 — 순수 신호 검증용이며 실현 가능한 수익률 추정치가 아니다.
+* 종목 1개씩만 백테스트 가능 (포트폴리오 단위 백테스트는 미구현).
+
+---
+
 ## 7. LLM 활용 범위
 
 ### 사용
@@ -637,14 +675,18 @@ DELETE /api/holdings/{id}
 
 * holdings CRUD API 구현
 * 수익률 계산 (avg_price 대비 현재가)
-* 보유 종목 기반 익절 / 손절 가이드 생성
+* 보유 종목 기반 익절 / 손절 가이드 생성 (규칙은 6.4절 참고)
 * watchlist / holdings 등록 종목에 한해 price_history 매일 자동 갱신 (스케줄러)
+
+> **범위 메모**: 이 Phase에서는 holdings만 구현했다. watchlist CRUD는 로드맵에 별도 Phase가 없어 이번엔 빠졌고, 필요해지면 holdings와 거의 동일한 패턴으로 추가하면 된다. 매일 자동 갱신 스케줄러도 아직 미구현 (Phase 6 확장 후보).
 
 ### Phase 6 — 확장
 
-* 백테스트 구조 설계 및 구현
+* 백테스트 구조 설계 및 구현 (아래 6.5절 참고)
 * 투자 성향 확장 (성장형 / 공격형)
 * 포트폴리오 분석
+
+> **범위 메모**: 이번엔 백테스트만 구현했다. 성향 확장 / 포트폴리오 분석은 아직 미착수.
 
 ---
 
@@ -720,6 +762,9 @@ def calculate_scores(ticker: str, market: str, as_of_date: date) -> ScoreResult:
 * 뉴스 데이터 활용 (초기: 요약 + 감성 분석)
 * LLM: Gemini API (google-genai SDK, `gemini-flash-lite-latest`) — 최초 계획했던 OpenAI에서 변경
 * MVP 완성 기준: 종목 하나 → 점수 → LLM 리포트 루프 동작
+* SINGLE_USER 처리: 인증 없이 고정 닉네임("default")의 users row를 최초 요청 시 자동 생성해 재사용. holdings/watchlist API는 요청에 user_id를 받지 않음
+* 보유 종목 가이드: LLM 리포트 재사용 안 함 (조회할 때마다 Gemini 호출 시 비용 문제) — Score Engine만으로 규칙 기반 판정 (6.4절)
+* 백테스트 전략: 롱 온리 신호 추종 (BUY 진입 / SELL 청산, HOLD·WATCH는 유지) — 슬리피지·수수료·세금 미반영, 종목 1개 단위만 지원 (6.5절)
 * DB: PostgreSQL
 * Backend: FastAPI
 * Frontend: Next.js

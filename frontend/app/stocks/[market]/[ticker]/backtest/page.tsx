@@ -1,5 +1,6 @@
+import { notFound } from "next/navigation";
 import BacktestPageClient from "./BacktestPageClient";
-import type { Market } from "@/lib/types";
+import { isMarket } from "@/lib/types";
 
 export default async function BacktestPage({
   params,
@@ -7,5 +8,8 @@ export default async function BacktestPage({
   params: Promise<{ market: string; ticker: string }>;
 }) {
   const { market, ticker } = await params;
-  return <BacktestPageClient market={market as Market} ticker={ticker} />;
+  if (!isMarket(market)) {
+    notFound();
+  }
+  return <BacktestPageClient market={market} ticker={ticker} />;
 }

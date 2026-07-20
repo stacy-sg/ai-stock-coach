@@ -1,14 +1,15 @@
+from dataclasses import asdict
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.engine.backtest import InsufficientBacktestDataError, run_backtest
+from app.engine.backtest import InsufficientBacktestDataError
 from app.engine.score_engine import StockNotFoundError
 from app.schemas.backtest import BacktestOut
 from app.schemas.stock import Market
-from app.services import stock_service
+from app.services import backtest_service, stock_service
 
 router = APIRouter(prefix="/api/stocks", tags=["backtest"])
 
@@ -31,8 +32,12 @@ def backtest(
     stock_service.sync_price_history(db, stock)
 
     try:
-        return run_backtest(db, ticker, market, start_date, end_date)
+        bt = backtest_service.run_backtest_with_comment(
+            db, stock.name, ticker, market, start_date, end_date
+        )
     except StockNotFoundError:
         raise HTTPException(status_code=404, detail="Stock not found")
     except InsufficientBacktestDataError as e:
         raise HTTPException(status_code=422, detail=str(e))
+
+    return BacktestOut(**asdict(bt.result), name=stock.name, ai_comment=bt.ai_comment)

@@ -23,22 +23,8 @@ def get_popular_stocks(
     limit: int = Query(4, ge=1, le=20),
     db: Session = Depends(get_db),
 ):
-    stocks = stock_service.get_popular_stocks(db, market, limit)
-    results = []
-    for stock in stocks:
-        close, prev_close = stock_service.get_latest_prices(db, stock)
-        change_pct = (
-            (close - prev_close) / prev_close * 100 if close is not None and prev_close else None
-        )
-        results.append(
-            {
-                "ticker": stock.ticker,
-                "market": stock.market,
-                "name": stock.name,
-                "change_pct": change_pct,
-            }
-        )
-    return results
+    results = stock_service.get_popular_stocks(db, market, limit)
+    return [{**r, "market": market} for r in results]
 
 
 @router.get("/{ticker}", response_model=StockDetail)
@@ -48,5 +34,4 @@ def get_stock(ticker: str, market: Market, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Stock not found")
 
     stock_service.sync_price_history(db, stock)
-    stock_service.record_view(db, stock)
     return stock

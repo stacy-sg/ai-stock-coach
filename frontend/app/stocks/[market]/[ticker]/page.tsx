@@ -1,5 +1,6 @@
+import { notFound } from "next/navigation";
 import StockPageClient from "./StockPageClient";
-import type { Market } from "@/lib/types";
+import { isMarket } from "@/lib/types";
 
 export default async function StockPage({
   params,
@@ -7,5 +8,11 @@ export default async function StockPage({
   params: Promise<{ market: string; ticker: string }>;
 }) {
   const { market, ticker } = await params;
-  return <StockPageClient market={market as Market} ticker={ticker} />;
+  // A 2-segment URL like /stocks/AAPL/backtest resolves here too (market=
+  // "AAPL", ticker="backtest") since Next.js doesn't validate route param
+  // values — without this check it'd sail through to a 422 from the API.
+  if (!isMarket(market)) {
+    notFound();
+  }
+  return <StockPageClient market={market} ticker={ticker} />;
 }

@@ -1,5 +1,9 @@
 export type Market = "KR" | "US";
 
+export function isMarket(value: string): value is Market {
+  return value === "KR" || value === "US";
+}
+
 export type Signal = "BUY" | "HOLD" | "WATCH" | "SELL";
 
 export interface StockSearchResult {
@@ -97,6 +101,7 @@ export interface WatchlistOut {
 export interface BacktestOut {
   ticker: string;
   market: Market;
+  name: string;
   start_date: string;
   end_date: string;
   trades: TradeOut[];
@@ -104,8 +109,10 @@ export interface BacktestOut {
   buy_hold_curve: EquityPointOut[];
   total_return_pct: number;
   buy_hold_return_pct: number;
+  cagr_pct: number;
   win_rate: number;
   max_drawdown_pct: number;
   num_trades: number;
   days_evaluated: number;
+  ai_comment: string | null;
 }

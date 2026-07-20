@@ -102,24 +102,30 @@ def sync_price_history(db: Session, stock: Stock, as_of_date: date | None = None
     return len(rows)
 
 
-def record_view(db: Session, stock: Stock) -> None:
-    """Bump the "popular stocks" counter. Called once per stock-detail page
-    load (GET /api/stocks/{ticker}) — not from get_or_create_stock, since
-    that's also called internally by holdings/watchlist/analysis and would
-    over-count a single page visit several times over.
-    """
-    stock.view_count += 1
-    db.commit()
+# Not a real "trending" source for US (FinanceDataReader's NASDAQ/NYSE/AMEX
+# listings carry no price/volume columns to rank by — see market_data.py),
+# so this is a fixed set of large, high-interest tickers rather than a
+# usage-derived ranking. Revisit if a better US market-wide data source
+# shows up.
+US_POPULAR_TICKERS = ["AAPL", "MSFT", "NVDA", "GOOGL", "TSLA"]
 
 
-def get_popular_stocks(db: Session, market: str, limit: int) -> list[Stock]:
-    return (
-        db.query(Stock)
-        .filter(Stock.market == market, Stock.view_count > 0)
-        .order_by(Stock.view_count.desc())
-        .limit(limit)
-        .all()
-    )
+def get_popular_stocks(db: Session, market: str, limit: int) -> list[dict]:
+    if market == "KR":
+        return market_data.get_kr_trending(limit)
+
+    results = []
+    for ticker in US_POPULAR_TICKERS[:limit]:
+        stock = get_or_create_stock(db, ticker, market)
+        if stock is None:
+            continue
+        sync_price_history(db, stock)
+        close, prev_close = get_latest_prices(db, stock)
+        change_pct = (
+            (close - prev_close) / prev_close * 100 if close is not None and prev_close else None
+        )
+        results.append({"ticker": stock.ticker, "name": stock.name, "change_pct": change_pct})
+    return results
 
 
 def get_latest_prices(db: Session, stock: Stock) -> tuple[float | None, float | None]:

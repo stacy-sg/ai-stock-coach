@@ -13,11 +13,45 @@ _listing_cache: dict[str, tuple[pd.DataFrame, datetime]] = {}
 _listing_lock = threading.Lock()
 
 
+def get_kr_listing_raw() -> pd.DataFrame:
+    """Cached full-column KRX listing (Volume, ChagesRatio, etc. included).
+
+    Search only needs ticker/name/sector, but trending needs the rest, so
+    this is fetched and cached once and both views are derived from it —
+    avoids hitting the KRX endpoint twice for the same data.
+    """
+    with _listing_lock:
+        cached = _listing_cache.get("KR_RAW")
+        if cached and datetime.utcnow() - cached[1] < LISTING_TTL:
+            return cached[0]
+
+    df = fdr.StockListing("KRX")
+
+    with _listing_lock:
+        _listing_cache["KR_RAW"] = (df, datetime.utcnow())
+    return df
+
+
 def _fetch_kr_listing() -> pd.DataFrame:
-    df = fdr.StockListing("KRX")[["Code", "Name"]].copy()
+    df = get_kr_listing_raw()[["Code", "Name"]].copy()
     df["ticker"] = df["Code"]
     df["sector"] = None
     return df[["ticker", "Name", "sector"]].rename(columns={"Name": "name"})
+
+
+def get_kr_trending(limit: int) -> list[dict]:
+    """Real "most actively traded today" KR stocks, by trading volume —
+    not a popularity metric derived from our own users (there's only one)."""
+    df = get_kr_listing_raw()
+    top = df.sort_values("Volume", ascending=False).head(limit)
+    return [
+        {
+            "ticker": row.Code,
+            "name": row.Name,
+            "change_pct": None if pd.isna(row.ChagesRatio) else float(row.ChagesRatio),
+        }
+        for row in top.itertuples()
+    ]
 
 
 def _fetch_us_listing() -> pd.DataFrame:

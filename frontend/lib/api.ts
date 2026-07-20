@@ -24,19 +24,40 @@ export class ApiError extends Error {
   }
 }
 
+// FastAPI's own request-validation errors (bad query param, wrong type,
+// missing field — raised before our route code even runs) use a totally
+// different `detail` shape than our HTTPException(..., detail="string")
+// calls: a list of {type, loc, msg, input, ctx} objects, one per invalid
+// field. Flatten that into readable text instead of passing the raw
+// object/array through — ApiError.detail must always end up a string, or
+// rendering it directly (e.g. <StatusMessage description={err.detail} />)
+// crashes with "Objects are not valid as a React child".
+function normalizeDetail(raw: unknown, fallback: string): string {
+  if (typeof raw === "string") return raw;
+  if (Array.isArray(raw)) {
+    return raw
+      .map((item) =>
+        item && typeof item === "object" && "msg" in item ? String(item.msg) : JSON.stringify(item)
+      )
+      .join(" / ");
+  }
+  if (raw && typeof raw === "object") return JSON.stringify(raw);
+  return fallback;
+}
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, init);
   if (!res.ok) {
-    // FastAPI error responses are {"detail": "..."} — fall back to raw text
+    // FastAPI error responses are {"detail": ...} — fall back to raw text
     // for anything else (e.g. a proxy/network error page).
     const body = await res.text().catch(() => "");
-    let detail = body;
+    let raw: unknown = body;
     try {
-      detail = JSON.parse(body).detail ?? body;
+      raw = JSON.parse(body).detail;
     } catch {
-      // not JSON, use as-is
+      // not JSON, use the raw text as-is
     }
-    throw new ApiError(res.status, detail || res.statusText);
+    throw new ApiError(res.status, normalizeDetail(raw, res.statusText));
   }
   if (res.status === 204) {
     return undefined as T;

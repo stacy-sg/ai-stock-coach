@@ -24,7 +24,6 @@ class Stock(Base):
     market = Column(String(2), nullable=False)  # KR / US
     name = Column(String, nullable=False)
     sector = Column(String)
-    view_count = Column(Integer, nullable=False, default=0)
 
     __table_args__ = (UniqueConstraint("ticker", "market", name="uq_ticker_market"),)
 

@@ -9,6 +9,7 @@ from google.genai import errors, types
 from pydantic import BaseModel
 
 from app.config import settings
+from app.engine.backtest import BacktestResult
 from app.engine.score_engine import ScoreResult
 
 logger = logging.getLogger(__name__)
@@ -149,3 +150,57 @@ def _analyze_news(titles: list[str]) -> dict[int, dict]:
     )
     parsed = _NewsAnalysisList.model_validate_json(response.text)
     return {item.index: item.model_dump() for item in parsed.items}
+
+
+BACKTEST_SYSTEM_INSTRUCTION = (
+    "너는 개인 투자자를 돕는 AI 투자 코치다. 사용자에게 전달되는 백테스트 결과(전략 수익률, 바이앤홀드 대비 "
+    "우위, MDD, 승률, 거래 횟수 등)는 이미 규칙 기반 시뮬레이션 엔진이 계산을 마친 확정값이다. 너의 역할은 "
+    "그 결과를 초보 투자자도 이해할 수 있는 자연스러운 한국어로 해석해주는 것뿐이다.\n"
+    "다음을 반드시 지켜라:\n"
+    "- 수치를 재계산하거나 다른 값을 제시하지 마라.\n"
+    "- 이 결과가 미래 수익을 보장한다고 암시하지 마라. 과거 한 종목에 대한 시뮬레이션일 뿐이라는 한계를 "
+    "반드시 짚어라.\n"
+    "- 지금 매수하라거나 이 전략을 그대로 실행하라는 식의 행동을 추천하지 마라. 결과 해석에만 집중해라.\n"
+    "- 제공된 수치에 근거해서만 설명하고, 제공되지 않은 정보는 지어내지 마라.\n"
+    "- 3~4문장 정도의 짧은 문단으로, 제목이나 메타정보 줄 없이 바로 본문부터 시작해라."
+)
+
+
+def generate_backtest_summary(
+    stock_name: str, market: str, result: BacktestResult
+) -> str | None:
+    """Best-effort LLM interpretation of already-computed backtest stats.
+
+    Same resilience policy as generate_report: returns None on failure so a
+    flaky LLM call never blocks the (already-correct) simulation result.
+    """
+    try:
+        return _generate_backtest_summary(stock_name, market, result)
+    except Exception:
+        logger.exception("LLM backtest summary failed for %s:%s", market, stock_name)
+        return None
+
+
+def _generate_backtest_summary(stock_name: str, market: str, result: BacktestResult) -> str:
+    vs_hold = result.total_return_pct - result.buy_hold_return_pct
+    prompt = f"""종목: {stock_name} ({market})
+기간: {result.start_date} ~ {result.end_date}
+
+[백테스트 결과 — 이미 확정된 값, 재계산 금지]
+전략 총 수익률: {result.total_return_pct:.1f}%
+연환산 수익률(CAGR): {result.cagr_pct:.1f}%
+바이앤홀드(단순 보유) 수익률: {result.buy_hold_return_pct:.1f}% (전략이 {vs_hold:+.1f}%p {"우위" if vs_hold >= 0 else "열위"})
+최대 낙폭(MDD): {result.max_drawdown_pct:.1f}%
+승률: {result.win_rate:.0f}%
+총 거래 횟수: {result.num_trades}회
+
+위 결과를 어떻게 해석하면 좋을지 설명해줘."""
+
+    response = _with_retry(
+        lambda: _client.models.generate_content(
+            model=MODEL,
+            contents=prompt,
+            config=types.GenerateContentConfig(system_instruction=BACKTEST_SYSTEM_INSTRUCTION),
+        )
+    )
+    return response.text

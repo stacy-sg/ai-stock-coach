@@ -3,7 +3,7 @@
 import { ArrowLeft, LineChart, RefreshCw, Star } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import AnalysisReport from "@/components/AnalysisReport";
+import AiCommentCard from "@/components/AiCommentCard";
 import DetailScores from "@/components/DetailScores";
 import NewsList from "@/components/NewsList";
 import OverallScoreCard from "@/components/OverallScoreCard";
@@ -190,7 +190,11 @@ export default function StockPageClient({
       {analysis ? (
         <>
           <SignalBanner signal={analysis.signal} />
-          <AnalysisReport report={analysis.llm_report} />
+          <AiCommentCard
+            title="AI 코치의 의견"
+            comment={analysis.llm_report}
+            fallback="리포트 생성에 실패했습니다. 잠시 후 다시 분석을 시도해주세요."
+          />
           <OverallScoreCard analysis={analysis} />
           <DetailScores analysis={analysis} />
         </>

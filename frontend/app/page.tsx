@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import PopularGrid from "@/components/PopularGrid";
 import RecentSearchChips from "@/components/RecentSearchChips";
 import WatchlistSection from "@/components/WatchlistSection";
+import WatchlistToggleButton from "@/components/WatchlistToggleButton";
 import { getPopularStocks, listWatchlist, removeWatchlist, searchStocks } from "@/lib/api";
 import { getRecentViews, type RecentView } from "@/lib/recentViews";
 import type { PopularStockOut, StockSearchResult, WatchlistOut } from "@/lib/types";
@@ -69,6 +70,10 @@ export default function Home() {
 
   const showingResults = results !== null;
 
+  function watchlistIdFor(ticker: string, market: string) {
+    return watchlist.find((i) => i.ticker === ticker && i.market === market)?.id ?? null;
+  }
+
   return (
     <div className="page-container">
       {!showingResults && (
@@ -105,20 +110,32 @@ export default function Home() {
             <p className="text-muted py-8 text-center text-sm">검색 결과가 없습니다.</p>
           )}
           <ul className="flex flex-col gap-1">
-            {results.map((stock) => (
-              <li key={`${stock.market}:${stock.ticker}`}>
-                <Link href={`/stocks/${stock.market}/${stock.ticker}`} className="result-row">
-                  <div>
-                    <p className="font-medium">{stock.name}</p>
-                    <p className="text-muted text-xs">
-                      {stock.ticker}
-                      {stock.sector ? ` · ${stock.sector}` : ""}
-                    </p>
-                  </div>
-                  <span className="text-muted font-mono text-xs">{stock.market}</span>
-                </Link>
-              </li>
-            ))}
+            {results.map((stock) => {
+              const watchlistId = watchlistIdFor(stock.ticker, stock.market);
+              return (
+                <li key={`${stock.market}:${stock.ticker}`}>
+                  <Link href={`/stocks/${stock.market}/${stock.ticker}`} className="result-row">
+                    <div>
+                      <p className="font-medium">{stock.name}</p>
+                      <p className="text-muted text-xs">
+                        {stock.ticker}
+                        {stock.sector ? ` · ${stock.sector}` : ""}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-muted font-mono text-xs">{stock.market}</span>
+                      <WatchlistToggleButton
+                        ticker={stock.ticker}
+                        market={stock.market}
+                        watchlistId={watchlistId}
+                        onAdded={(item) => setWatchlist((prev) => [item, ...prev])}
+                        onRemoved={() => handleRemoveWatchlist(watchlistId!)}
+                      />
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </div>
       ) : (

@@ -56,6 +56,7 @@ class BacktestResult:
     buy_hold_curve: list[EquityPoint]
     total_return_pct: float
     buy_hold_return_pct: float
+    cagr_pct: float
     win_rate: float
     max_drawdown_pct: float
     num_trades: int
@@ -233,6 +234,16 @@ def run_backtest(
         EquityPoint(ts.date(), close / first_close) for ts, close in window["close"].items()
     ]
 
+    # Annualize off the actual calendar span (not trading days evaluated) —
+    # a 6-month backtest and a 3-year one with the same total return should
+    # not report the same CAGR.
+    calendar_days = max((end_date - start_date).days, 1)
+    cagr_pct = (
+        -100.0
+        if equity <= 0
+        else ((equity ** (365.25 / calendar_days)) - 1) * 100
+    )
+
     return BacktestResult(
         ticker=ticker,
         market=market,
@@ -243,6 +254,7 @@ def run_backtest(
         buy_hold_curve=buy_hold_curve,
         total_return_pct=(equity - 1) * 100,
         buy_hold_return_pct=(last_close - first_close) / first_close * 100,
+        cagr_pct=cagr_pct,
         win_rate=win_rate,
         max_drawdown_pct=max_drawdown * 100,
         num_trades=len(trades),

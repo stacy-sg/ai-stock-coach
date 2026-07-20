@@ -1,4 +1,5 @@
 from datetime import date
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -19,6 +20,7 @@ class EquityPointOut(BaseModel):
 class BacktestOut(BaseModel):
     ticker: str
     market: str
+    name: str
     start_date: date
     end_date: date
     trades: list[TradeOut]
@@ -26,7 +28,9 @@ class BacktestOut(BaseModel):
     buy_hold_curve: list[EquityPointOut]
     total_return_pct: float
     buy_hold_return_pct: float
+    cagr_pct: float
     win_rate: float
     max_drawdown_pct: float
     num_trades: int
     days_evaluated: int
+    ai_comment: Optional[str] = None

@@ -220,6 +220,20 @@ body {
     color: var(--signal-sell-text);
   }
 
+  /* Compact action tags (backtest trade rows: BUY/SELL) — same tokens,
+     smaller surface than the badges above. */
+  .tag-buy {
+    @apply inline-flex min-w-[42px] items-center justify-center rounded-md px-2.5 py-1 text-xs font-bold;
+    background: var(--signal-buy-bg);
+    color: var(--signal-buy-text);
+  }
+
+  .tag-sell {
+    @apply inline-flex min-w-[42px] items-center justify-center rounded-md px-2.5 py-1 text-xs font-bold;
+    background: var(--signal-sell-bg);
+    color: var(--signal-sell-text);
+  }
+
   /* Big signal banner (종목 분석 hero) — same tokens, larger surface */
   .signal-banner {
     @apply flex flex-col items-center gap-2 rounded-[20px] px-6 py-7 text-center;

@@ -14,27 +14,34 @@ const MARKDOWN_COMPONENTS: Components = {
       <span>{children}</span>
     </li>
   ),
-  // The report never links out, and LLM output shouldn't drive navigation
-  // anyway — render link text as plain text instead of a clickable <a>.
+  // Neither report ever links out, and LLM output shouldn't drive
+  // navigation anyway — render link text as plain text instead of a
+  // clickable <a>.
   a: ({ children }) => <span>{children}</span>,
 };
 
-export default function AnalysisReport({ report }: { report: string | null }) {
+export default function AiCommentCard({
+  title,
+  comment,
+  fallback,
+}: {
+  title: string;
+  comment: string | null;
+  fallback: string;
+}) {
   return (
     <section className="card flex flex-col gap-3.5">
       <div className="flex items-center gap-2.5">
         <span className="avatar-brand">AI</span>
-        <span className="text-[15px] font-bold">AI 코치의 의견</span>
+        <span className="text-[15px] font-bold">{title}</span>
       </div>
 
-      {report ? (
+      {comment ? (
         <div className="flex flex-col gap-3 text-[17px] leading-[1.7] font-normal">
-          <Markdown components={MARKDOWN_COMPONENTS}>{report}</Markdown>
+          <Markdown components={MARKDOWN_COMPONENTS}>{comment}</Markdown>
         </div>
       ) : (
-        <p className="text-muted text-sm">
-          리포트 생성에 실패했습니다. 잠시 후 다시 분석을 시도해주세요.
-        </p>
+        <p className="text-muted text-sm">{fallback}</p>
       )}
     </section>
   );

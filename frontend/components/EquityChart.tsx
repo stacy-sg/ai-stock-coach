@@ -8,6 +8,12 @@ const WIDTH = 640;
 const HEIGHT = 280;
 const PADDING = { top: 16, right: 12, bottom: 8, left: 48 };
 
+// The strategy line's identity color — always green, regardless of whether
+// this particular run beat the market. Reuses the BUY signal ring token
+// rather than a one-off hex so it stays in sync with the rest of the app's
+// signal palette if that ever changes.
+const STRATEGY_COLOR = "var(--signal-buy-ring)";
+
 function toReturnSeries(points: EquityPointOut[]): number[] {
   return points.map((p) => (p.equity - 1) * 100);
 }
@@ -65,7 +71,7 @@ export default function EquityChart({
     <div className="flex flex-col gap-3">
       <div className="flex items-center gap-4 text-xs">
         <span className="flex items-center gap-1.5">
-          <span className="bg-brand h-0.5 w-4 rounded-full" />
+          <span className="h-0.5 w-4 rounded-full" style={{ background: STRATEGY_COLOR }} />
           <span className="text-muted">전략</span>
         </span>
         <span className="flex items-center gap-1.5">
@@ -104,22 +110,23 @@ export default function EquityChart({
 
         <path
           d={`${pathFor(strategy)} L${xAt(n - 1).toFixed(2)},${zeroY} L${xAt(0).toFixed(2)},${zeroY} Z`}
-          className="fill-brand/10"
+          fill={STRATEGY_COLOR}
+          opacity={0.1}
         />
 
         <path
           d={pathFor(benchmark)}
           fill="none"
           className="stroke-zinc-400 dark:stroke-zinc-600"
-          strokeWidth={2}
+          strokeWidth={2.5}
           strokeLinejoin="round"
           strokeLinecap="round"
         />
         <path
           d={pathFor(strategy)}
           fill="none"
-          className="stroke-brand"
-          strokeWidth={2}
+          stroke={STRATEGY_COLOR}
+          strokeWidth={3}
           strokeLinejoin="round"
           strokeLinecap="round"
         />
@@ -138,7 +145,8 @@ export default function EquityChart({
               cx={xAt(hoverIndex)}
               cy={yAt(strategy[hoverIndex])}
               r={4}
-              className="fill-brand stroke-surface"
+              fill={STRATEGY_COLOR}
+              className="stroke-surface"
               strokeWidth={2}
             />
             <circle
@@ -167,7 +175,7 @@ export default function EquityChart({
           <>
             <span className="text-muted">{formatDate(dates[hoverIndex])}</span>
             <span className="flex gap-4 font-mono font-semibold">
-              <span className="text-brand">전략 {formatPct(strategy[hoverIndex])}</span>
+              <span style={{ color: STRATEGY_COLOR }}>전략 {formatPct(strategy[hoverIndex])}</span>
               <span className="text-muted">바이앤홀드 {formatPct(benchmark[hoverIndex])}</span>
             </span>
           </>

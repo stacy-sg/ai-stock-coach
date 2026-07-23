@@ -32,7 +32,16 @@ def compute_indicators(df: pd.DataFrame, as_of_date: date) -> dict:
     ma60 = SMAIndicator(close, window=60).sma_indicator()
     rsi14 = RSIIndicator(close, window=14).rsi()
     macd_calc = MACD(close)
-    atr14 = AverageTrueRange(high, low, close, window=14).average_true_range()
+    # ta's AverageTrueRange indexes into the window directly instead of
+    # letting it roll off the end like the other indicators here, so it
+    # raises IndexError (not NaN) when given fewer rows than the window —
+    # guard it explicitly so short histories fall through to the same
+    # "missing indicator" / InsufficientHistoryError path as everything else.
+    atr14 = (
+        AverageTrueRange(high, low, close, window=14).average_true_range()
+        if len(history) >= 14
+        else pd.Series([float("nan")] * len(history), index=history.index)
+    )
     volume_ma20 = SMAIndicator(volume, window=20).sma_indicator()
 
     def last(series: pd.Series) -> float | None:

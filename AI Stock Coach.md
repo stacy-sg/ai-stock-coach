@@ -519,7 +519,7 @@ news_score = (avg_sentiment_score + 1) / 2 * 100
 
 `(stock_id, date)` 유니크 제약
 
-> **수집 정책**: 국장/미장 전체 종목을 사전에 일괄 수집하지 않는다. 사용자가 특정 종목을 검색·조회하는 시점에 FinanceDataReader로 해당 종목의 가격 이력만 온디맨드로 가져와 캐싱한다. 이후 재조회 시에는 캐시를 재사용하고, 누락된 최근 구간만 증분 갱신한다. 전체 시장 사전 수집(스크리닝/대시보드용)은 범위가 다른 작업이며 별도 요청 시에만 검토한다. (참고: Phase 5에서 watchlist/holdings에 등록된 종목에 한해 매일 자동 갱신을 추가할 예정.)
+> **수집 정책**: 국장/미장 전체 종목을 사전에 일괄 수집하지 않는다. 사용자가 특정 종목을 검색·조회하는 시점에 FinanceDataReader로 해당 종목의 가격 이력만 온디맨드로 가져와 캐싱한다. 이후 재조회 시에는 캐시를 재사용하고, 누락된 최근 구간만 증분 갱신한다. 전체 시장 사전 수집(스크리닝/대시보드용)은 범위가 다른 작업이며 별도 요청 시에만 검토한다. **watchlist/holdings에 등록된 종목만 예외로 매일 자동 갱신한다** — `app/scheduler.py`, APScheduler `BackgroundScheduler`를 FastAPI lifespan에서 기동, 국장(15:30 KST)·미장(~06:00 KST) 마감 이후인 매일 07:00 KST에 1회 실행. 실패한 종목은 로그만 남기고 나머지는 계속 진행(부분 실패 허용).
 
 ### news (뉴스)
 
@@ -682,7 +682,7 @@ DELETE /api/holdings/{id}
 * 보유 종목 기반 익절 / 손절 가이드 생성 (규칙은 6.4절 참고)
 * watchlist / holdings 등록 종목에 한해 price_history 매일 자동 갱신 (스케줄러)
 
-> **범위 메모**: 이 Phase에서는 holdings만 구현했다. watchlist CRUD는 로드맵에 별도 Phase가 없어 이번엔 빠졌고, 필요해지면 holdings와 거의 동일한 패턴으로 추가하면 된다. 매일 자동 갱신 스케줄러도 아직 미구현 (Phase 6 확장 후보).
+> **범위 메모**: 이 Phase에서는 holdings만 구현했다. watchlist CRUD는 로드맵에 별도 Phase가 없어 이번엔 빠졌지만, 이후 holdings와 거의 동일한 패턴으로 추가했다(검색 결과에서 바로 추가/제거하는 퀵토글까지 포함). 매일 자동 갱신 스케줄러도 이후 추가 완료.
 
 ### Phase 6 — 확장
 
@@ -760,7 +760,7 @@ def calculate_scores(ticker: str, market: str, as_of_date: date) -> ScoreResult:
 * Signal 임계값: total_score >= 70 BUY / 50~69 HOLD / 30~49 WATCH / < 30 SELL
 * Score Engine 인터페이스: `calculate_scores(ticker, market, as_of_date)` 순수 함수 — look-ahead bias 방지 및 백테스트 재사용
 * 캐시 TTL: 장중 30분 / 장 마감 후 다음 거래일 개장 시각
-* price_history 수집 정책: 온디맨드 캐싱 (국장/미장 전체 사전 수집 아님). watchlist/holdings 종목만 Phase 5에서 매일 자동 갱신 예정
+* price_history 수집 정책: 온디맨드 캐싱 (국장/미장 전체 사전 수집 아님). watchlist/holdings 종목만 예외로 매일 자동 갱신 (APScheduler, 매일 07:00 KST — 9장 참고)
 * FinanceDataReader는 지연 데이터(15~20분)임을 UI에 명시
 * 데이터 분석 라이브러리: ta 0.11.0 (TA-Lib 대체, 순수 Python)
 * 뉴스 데이터 활용 (초기: 요약 + 감성 분석)
